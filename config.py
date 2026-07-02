@@ -40,8 +40,3 @@ EMBEDDING_MODEL_NAME = ""
 # 指定本地模型的路径或HuggingFace模型库的ID
 # 例如: 'sentence-transformers/all-MiniLM-L6-v2'
 LOCAL_EMBEDDING_MODEL_PATH = r"C:\Users\lil biu\Desktop\学习\自然语言处理课设\AgentiRAG-master\bge-large-zh-v1.5"
-
-# --- Excel 数据加载配置 ---
-# 在加载Excel文件时，指定哪些列应该被提取为文档的元数据。
-# 这些列的值将作为键值对存储在向量库中，用于后续的过滤或更精确的检索。
-EXCEL_METADATA_COLUMNS = ["药品名称", "生产企业", "批准文号", "药品编码", "本位码"]

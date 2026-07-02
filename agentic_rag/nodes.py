@@ -6,13 +6,14 @@
 from langchain_core.prompts import ChatPromptTemplate
 
 from agentic_rag.chains import (
-    get_query_router_chain, get_initial_rewriter_chain, get_correctional_rewriter_chain, 
+    get_query_router_chain, get_initial_rewriter_chain, get_correctional_rewriter_chain,
     get_relevance_grader_chain, get_document_relevance_grader_chain, get_memory_consolidation_chain, llm
 )
 from agentic_rag.hierarchical_retriever import hierarchical_retriever, direct_chunk_retriever
 from agentic_rag.retrievers import get_web_search_tool
 from agentic_rag.state import AgentState
 from agentic_rag import memory
+
 
 # --- 新增：记忆相关节点 ---
 
@@ -28,9 +29,10 @@ def retrieve_memory_node(state: AgentState) -> dict:
     print(f"检索到的记忆: {memories_text}")
     return {
         "retrieved_memories": memories_text,
-        "conversation_history": [], # 初始化对话历史
-        "correction_attempts": 0, # 初始化重试计数器
+        "conversation_history": [],  # 初始化对话历史
+        "correction_attempts": 0,  # 初始化重试计数器
     }
+
 
 def consolidate_memory_node(state: AgentState) -> dict:
     """在流程结束时，提炼并存储本次对话的关键信息。"""
@@ -42,11 +44,11 @@ def consolidate_memory_node(state: AgentState) -> dict:
 
     # 格式化历史以供LLM分析
     history_text = "\n".join([f"{role}: {text}" for role, text in history])
-    
+
     consolidation_chain = get_memory_consolidation_chain()
     try:
         result = consolidation_chain.invoke({"conversation_history": history_text})
-        
+
         # NEW: Handle inconsistent chain output (sometimes a list, sometimes a dict)
         if isinstance(result, list) and result:
             result = result[0]
@@ -56,8 +58,9 @@ def consolidate_memory_node(state: AgentState) -> dict:
     except Exception as e:
         # 如果记忆提炼失败，不影响主流程
         print(f"记忆提炼失败: {e}")
-    
+
     return {}
+
 
 # --- 现有节点改造 ---
 
@@ -66,7 +69,7 @@ def route_query_node(state: AgentState) -> dict:
     print("--- 智能路由与调度 ---")
     query = state["query"]
     memories = state["retrieved_memories"]
-    
+
     router_chain = get_query_router_chain()
     result = router_chain.invoke({"query": query, "memories": memories})
     route = result['datasource']
@@ -78,6 +81,7 @@ def route_query_node(state: AgentState) -> dict:
 
     # 初始化“已尝试路由”列表
     return {"route": route, "tried_routes": [route], "conversation_history": history}
+
 
 def retrieve_documents_node(state: AgentState) -> dict:
     """文档检索节点：根据路由决策执行检索。"""
@@ -104,6 +108,7 @@ def retrieve_documents_node(state: AgentState) -> dict:
 
     return {"documents": documents}
 
+
 # def grade_documents_node(state: AgentState) -> dict:
 #     """文档相关性评估节点（内循环）"""
 #     print("--- 评估文档相关性 ---")
@@ -129,10 +134,15 @@ def grade_documents_node(state: AgentState) -> dict:
         return {"documents_are_relevant": False}
 
     grader_chain = get_document_relevance_grader_chain()
-    raw_result = grader_chain.invoke({"query": state["query"], "documents": state["documents"]})
-    is_relevant = "true" in raw_result.strip().lower()
+    try:
+        result = grader_chain.invoke({"query": state["query"], "documents": state["documents"]})
+    except Exception as e:
+        print(f"--- 文档相关性评估解析失败: {e} ---")
+        print("--- 降级策略：默认判定文档相关 ---")
+        # 解析失败时的兜底策略，可根据需求改为 False
+        return {"documents_are_relevant": True}
 
-    if is_relevant:
+    if result['is_relevant']:
         print("--- 文档相关，准备生成答案 ---")
         return {"documents_are_relevant": True}
     else:
@@ -147,6 +157,7 @@ def web_search_node(state: AgentState) -> dict:
     documents = web_search.invoke({"query": updated_query})
     return {"documents": documents}
 
+
 def rewrite_query_node(state: AgentState) -> dict:
     """查询重写节点"""
     print("--- 重写查询 ---")
@@ -159,9 +170,10 @@ def rewrite_query_node(state: AgentState) -> dict:
     else:
         rewriter_chain = get_initial_rewriter_chain()
         result = rewriter_chain.invoke({"query": query})
-    
+
     print(f"重写后的查询: {result['rewritten_query']}")
     return {"updated_query": result['rewritten_query']}
+
 
 def generate_response_node(state: AgentState) -> dict:
     """答案生成节点"""
@@ -181,39 +193,25 @@ def generate_response_node(state: AgentState) -> dict:
 
     return {"response": response.content, "conversation_history": history}
 
+
 def direct_response_node(state: AgentState) -> dict:
     """直接回答节点"""
     print("--- 直接回答 ---")
     response = llm.invoke(state["query"])
-    
+
     # 记录到对话历史
     history = state.get("conversation_history", [])
     history.append(("AI", response.content))
 
     return {"response": response.content, "documents": [], "conversation_history": history}
 
-# def grade_relevance_node(state: AgentState) -> dict:
-#     """答案相关性评估节点（外循环）"""
-#     print("--- 评估最终答案相关性 ---")
-#     grader_chain = get_relevance_grader_chain()
-#     result = grader_chain.invoke({"query": state["query"], "response": state["response"]})
-#     if result['is_relevant']:
-#         print("答案相关，流程结束。")
-#         return {"is_relevant": True}
-#     else:
-#         print("--- 答案不相关，将触发重写 ---")
-#         attempts = state.get("correction_attempts", 0) + 1
-#         return {"is_relevant": False, "correction_attempts": attempts}
 
 def grade_relevance_node(state: AgentState) -> dict:
     """答案相关性评估节点（外循环）"""
     print("--- 评估最终答案相关性 ---")
     grader_chain = get_relevance_grader_chain()
-    raw_result = grader_chain.invoke({"query": state["query"], "response": state["response"]})
-    # 解析文本输出
-    is_relevant = "true" in raw_result.strip().lower()
-
-    if is_relevant:
+    result = grader_chain.invoke({"query": state["query"], "response": state["response"]})
+    if result['is_relevant']:
         print("答案相关，流程结束。")
         return {"is_relevant": True}
     else:

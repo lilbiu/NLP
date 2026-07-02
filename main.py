@@ -12,6 +12,7 @@ thread_id = str(uuid.uuid4())
 
 config = {"configurable": {"thread_id": thread_id}}
 
+
 def handle_memory_commands(query: str) -> bool:
     """处理用户输入的记忆管理指令，如果处理了指令则返回True。"""
     if query.strip() == '!show_memories':
@@ -21,7 +22,7 @@ def handle_memory_commands(query: str) -> bool:
             print("记忆库为空。")
         else:
             for i, mem in enumerate(mems):
-                print(f"{i+1}. [ID: {mem['id']}, 类型: {mem['type']}, 重要性: {mem['importance']}] - {mem['text']}")
+                print(f"{i + 1}. [ID: {mem['id']}, 类型: {mem['type']}, 重要性: {mem['importance']}] - {mem['text']}")
         return True
 
     elif query.startswith('!forget'):
@@ -29,7 +30,7 @@ def handle_memory_commands(query: str) -> bool:
         if not topic:
             print("用法错误: 请提供要忘记的主题。例如: !forget 我的项目ID")
             return True
-        
+
         print(f"--- 查找与 '{topic}' 相关的记忆 ---")
         retrieved_mems = memory.retrieve_memories(topic, top_k=5)
         if not retrieved_mems:
@@ -38,8 +39,8 @@ def handle_memory_commands(query: str) -> bool:
 
         print("找到以下相关记忆：")
         for i, mem in enumerate(retrieved_mems):
-            print(f"{i+1}. [ID: {mem['id']}] - {mem['text']}")
-        
+            print(f"{i + 1}. [ID: {mem['id']}] - {mem['text']}")
+
         confirm = input("您确定要删除以上所有记忆吗? (y/n): ")
         if confirm.lower() == 'y':
             for mem in retrieved_mems:
@@ -48,14 +49,15 @@ def handle_memory_commands(query: str) -> bool:
         else:
             print("操作已取消。")
         return True
-        
+
     return False
+
 
 def main():
     """主函数，运行Agentic RAG流程。"""
     # 在启动时确保记忆库已初始化
     memory.initialize_memory_db()
-    
+
     graph = build_graph()
 
     print("欢迎使用Agentic RAG系统！")
@@ -63,7 +65,7 @@ def main():
     print("  - 输入 '!show_memories' 查看记忆。  ")
     print("  - 输入 '!forget [主题]' 删除记忆。  ")
     print("  - 输入 'exit' 退出程序。  ")
-    
+
     while True:
         query = input("\n请输入您的问题或指令: ")
         if query.lower() == 'exit':
@@ -74,16 +76,17 @@ def main():
         # 优先处理记忆管理指令
         if handle_memory_commands(query):
             continue
-        
+
         # 如果不是指令，则正常执行Agent工作流
         inputs = {"query": query}
         print("\n--- 系统开始处理 ---")
-        graph_config = {"recursion_limit": 25, **config}
+        graph_config = {"recursion_limit": 10, **config}
         final_state = graph.invoke(inputs, config=graph_config)
         print("--- 系统处理结束 ---")
 
         print("\n最终答案:")
         print(final_state["response"])
+
 
 if __name__ == "__main__":
     main()

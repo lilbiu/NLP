@@ -11,25 +11,12 @@ from agentic_rag.nodes import (
     consolidate_memory_node,
     route_query_node,
     rewrite_query_node,
-    retrieve_documents_node,
-    grade_documents_node,
+    retrieve_documents_node,  # new
+    grade_documents_node,  # new
     generate_response_node,
     grade_relevance_node,
     direct_response_node
 )
-
-
-def switch_strategy(state: AgentState) -> dict:
-    """切换到下一个未尝试的检索策略，并更新状态"""
-    tried = state.get("tried_routes", [])
-    all_routes = ['hierarchical_search', 'direct_chunk_search', 'web_search']
-    for route in all_routes:
-        if route not in tried:
-            tried.append(route)
-            print(f"--- 切换到新策略: {route} ---")
-            return {"route": route, "tried_routes": tried}
-    # 所有策略均已尝试（兜底，实际上外面条件边已处理）
-    return {"route": state["route"], "tried_routes": tried}
 
 
 def build_graph():
@@ -37,23 +24,26 @@ def build_graph():
     workflow = StateGraph(AgentState)
 
     # --- 添加所有节点 ---
+    # 记忆相关
     workflow.add_node("retrieve_memory", retrieve_memory_node)
     workflow.add_node("consolidate_memory", consolidate_memory_node)
+    # 核心流程
     workflow.add_node("route_query", route_query_node)
     workflow.add_node("rewrite_query", rewrite_query_node)
     workflow.add_node("retrieve_documents", retrieve_documents_node)
     workflow.add_node("grade_documents", grade_documents_node)
     workflow.add_node("generate_response", generate_response_node)
     workflow.add_node("direct_response", direct_response_node)
+    # 外部循环评估
     workflow.add_node("grade_relevance", grade_relevance_node)
-    # 新增：策略切换节点
-    workflow.add_node("switch_strategy", switch_strategy)
 
     # --- 定义边 ---
+
+    # 1. 从“回忆”开始
     workflow.set_entry_point("retrieve_memory")
     workflow.add_edge("retrieve_memory", "route_query")
 
-    # 路由后，需要检索的走重写，直接对话走直接回答
+    # 2. “路由”后，对于需要检索的，先“重写查询”
     workflow.add_conditional_edges(
         "route_query",
         lambda state: state["route"],
@@ -61,27 +51,36 @@ def build_graph():
             "web_search": "rewrite_query",
             "hierarchical_search": "rewrite_query",
             "direct_chunk_search": "rewrite_query",
-            "direct": "direct_response"
+            "direct": "direct_response"  # “直接回答”路由，跳过所有检索和生成
         }
     )
 
-    # 重写 -> 检索 -> 评估
+    # 3. “重写查询”后，开始“内循环”：检索->评估->决策
     workflow.add_edge("rewrite_query", "retrieve_documents")
     workflow.add_edge("retrieve_documents", "grade_documents")
 
-    # 文档评估后的决策（内循环）
+    # 4. “内循环”的核心决策
     def decide_after_document_grading(state: AgentState):
+        """在评估文档后，决定是生成答案，还是切换策略重试。"""
         if state.get("documents_are_relevant"):
             print("---决策：文档相关，进入答案生成---")
             return "generate"
 
         print("---决策：文档不相关，尝试切换策略---")
-        tried = state.get("tried_routes", [])
-        available = ['hierarchical_search', 'direct_chunk_search', 'web_search']
-        for r in available:
-            if r not in tried:
-                return "switch_strategy"
-        print("---决策：所有检索策略均失败，流程结束---")
+        tried_routes = state.get("tried_routes", [])
+        available_routes = ['hierarchical_search', 'direct_chunk_search', 'web_search']
+
+        for next_route in available_routes:
+            if next_route not in tried_routes:
+                print(f"---决策：切换到新策略 '{next_route}'---")
+                # 更新状态以驱动下一次循环
+                new_state = state.copy()
+                new_state['route'] = next_route
+                new_state['tried_routes'] = tried_routes + [next_route]
+                state.update(new_state)
+                return "retry_retrieve"
+
+        print("---决策：所有检索策略均失败，无法找到相关文档---")
         return "fallback"
 
     workflow.add_conditional_edges(
@@ -89,20 +88,19 @@ def build_graph():
         decide_after_document_grading,
         {
             "generate": "generate_response",
-            "switch_strategy": "switch_strategy",   # 去切换策略
-            "fallback": END
+            "retry_retrieve": "retrieve_documents",  # 回到检索节点，形成循环
+            "fallback": END  # 所有策略失败，结束流程
         }
     )
 
-    # 策略切换后重新检索
-    workflow.add_edge("switch_strategy", "retrieve_documents")
-
-    # 生成答案 / 直接回答 -> 评估相关性
+    # 5. “外循环”：生成答案 -> 评估答案
     workflow.add_edge("generate_response", "grade_relevance")
+    # “直接回答”也连接到最终评估
     workflow.add_edge("direct_response", "grade_relevance")
 
-    # 答案评估后的决策（外循环）
+    # 6. “外循环”的决策
     def decide_after_answer_grading(state: AgentState):
+        """在评估最终答案后，决定是结束还是重试。"""
         if state["is_relevant"]:
             print("---决策：答案相关，流程结束---")
             return "end"
@@ -118,11 +116,14 @@ def build_graph():
         "grade_relevance",
         decide_after_answer_grading,
         {
-            "end": "consolidate_memory",
-            "retry": "rewrite_query"
+            "end": "consolidate_memory",  # 答案相关或达到最大次数，去“复盘”并形成记忆
+            "retry": "rewrite_query"  # 答案不相关，重写查询
         }
     )
 
+    # 7. “复盘记忆”后，流程结束
     workflow.add_edge("consolidate_memory", END)
 
-    return workflow.compile()
+    # 编译图
+    graph = workflow.compile()
+    return graph
