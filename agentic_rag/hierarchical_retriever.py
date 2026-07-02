@@ -30,14 +30,14 @@ def hierarchical_retriever(query: str, n_docs=3, n_chunks=5) -> list[Document]:
     2. 在区块集合中，仅从这些相关文档里检索出具体的文本块。
     """
     print("--- 执行分层检索 ---")
-    
+
     # 步骤1: 在摘要层检索，找到最相关的n_docs个文档
     print("--- 步骤1: 检索摘要层 ---")
     summary_results = summary_collection.query(
         query_texts=[query],
         n_results=n_docs,
     )
-    
+
     if not summary_results or not summary_results.get('metadatas') or not summary_results['metadatas'][0]:
         print("未在摘要层找到相关文档。")
         return []
@@ -46,18 +46,18 @@ def hierarchical_retriever(query: str, n_docs=3, n_chunks=5) -> list[Document]:
     if not relevant_doc_sources:
         print("未在摘要层找到相关文档源。")
         return []
-    
+
     print(f"找到相关文档源: {relevant_doc_sources}")
 
     # 步骤2: 在区块层中，使用元数据过滤器，仅在相关文档中检索
     print("--- 步骤2: 在区块层进行过滤检索 ---")
-    
+
     where_filter = {
         "source": {
             "$in": relevant_doc_sources
         }
     }
-    
+
     chunk_results = chunk_collection.query(
         query_texts=[query],
         n_results=n_chunks,
@@ -74,8 +74,9 @@ def hierarchical_retriever(query: str, n_docs=3, n_chunks=5) -> list[Document]:
         final_chunks.append(
             Document(page_content=doc_text, metadata=chunk_results['metadatas'][0][i])
         )
-        
+
     return final_chunks
+
 
 def direct_chunk_retriever(query: str, n_chunks=5) -> list[Document]:
     """
@@ -98,5 +99,5 @@ def direct_chunk_retriever(query: str, n_chunks=5) -> list[Document]:
         final_chunks.append(
             Document(page_content=doc_text, metadata=chunk_results['metadatas'][0][i])
         )
-        
+
     return final_chunks

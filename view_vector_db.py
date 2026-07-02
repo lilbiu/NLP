@@ -6,19 +6,20 @@
 并允许用户通过命令行参数选择要查看的集合。
 """
 
-import os
 import argparse
+import os
+
 import chromadb
 from dotenv import load_dotenv
 
 # 加载环境变量和配置
 load_dotenv()
-import config
 
 # --- 配置 ---
 PERSIST_PATH = "chroma_db"
 SUMMARY_COLLECTION_NAME = "doc_summaries"
 CHUNK_COLLECTION_NAME = "doc_chunks"
+
 
 def main():
     """
@@ -70,7 +71,7 @@ def main():
         results = collection.get(limit=limit)
 
         for i, (id, meta, doc) in enumerate(zip(results['ids'], results['metadatas'], results['documents'])):
-            print(f"--- 条目 {i+1} ---")
+            print(f"--- 条目 {i + 1} ---")
             print(f"ID: {id}")
             print(f"元数据: {meta}")
             print(f"内容: {doc[:500]}...")
@@ -80,6 +81,7 @@ def main():
         print(f"\n查看向量库时发生错误: {e}")
 
     print(f"\n--- 查看集合 '{target_collection_name}' 结束 ---")
+
 
 if __name__ == "__main__":
     main()

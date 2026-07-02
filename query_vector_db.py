@@ -7,20 +7,22 @@
 然后输入查询，返回相关的文档。
 """
 
-import os
 import argparse
+import os
+
 import chromadb
-from agentic_rag.chains import get_embedding_function
 from dotenv import load_dotenv
+
+from agentic_rag.chains import get_embedding_function
 
 # 加载环境变量和配置
 load_dotenv()
-import config
 
 # --- 配置 ---
 PERSIST_PATH = "chroma_db"
 SUMMARY_COLLECTION_NAME = "doc_summaries"
 CHUNK_COLLECTION_NAME = "doc_chunks"
+
 
 def main():
     """
@@ -72,7 +74,7 @@ def main():
                 continue
 
             print(f"正在查询: '{query}'...")
-            
+
             # 4. 执行相似度搜索
             results = collection.query(
                 query_texts=[query],
@@ -83,8 +85,9 @@ def main():
                 print("未找到相关文档。")
             else:
                 print(f"\n找到 {len(results['documents'][0])} 篇相关文档:")
-                for i, (doc, meta, dist) in enumerate(zip(results['documents'][0], results['metadatas'][0], results['distances'][0])):
-                    print(f"--- 文档 {i+1} (距离: {dist:.4f}) ---")
+                for i, (doc, meta, dist) in enumerate(
+                        zip(results['documents'][0], results['metadatas'][0], results['distances'][0])):
+                    print(f"--- 文档 {i + 1} (距离: {dist:.4f}) ---")
                     print(f"来源: {meta.get('source', '未知')}")
                     print(f"内容: {doc[:500]}...")
                     print("-" * 30)
@@ -93,6 +96,7 @@ def main():
         print(f"\n查询向量库时发生错误: {e}")
 
     print("\n--- 查询向量库结束 ---")
+
 
 if __name__ == "__main__":
     main()

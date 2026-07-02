@@ -13,6 +13,7 @@ from langchain_tavily import TavilySearch
 # 网络搜索工具
 web_search_tool = TavilySearch(max_results=3)
 
+
 def get_web_search_tool():
     """获取网络搜索工具。"""
     return web_search_tool

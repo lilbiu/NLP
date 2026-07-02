@@ -6,12 +6,11 @@
 """
 
 import torch
-from langchain_core.prompts import ChatPromptTemplate
-from pydantic import BaseModel, Field
-from langchain_core.output_parsers import JsonOutputParser
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
-from langchain_huggingface import HuggingFaceEmbeddings
 from chromadb.utils import embedding_functions
+from langchain_core.output_parsers import JsonOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from pydantic import BaseModel, Field
 
 from config import (
     LLM_MODEL_NAME, OPENAI_API_BASE,
@@ -82,16 +81,6 @@ class DocumentRelevanceGrade(BaseModel):
 
 # --- LLM 链定义 ---
 
-# def get_document_relevance_grader_chain():
-#     """获取文档相关性评估链"""
-#     parser = JsonOutputParser(pydantic_object=DocumentRelevanceGrade)
-#     prompt = ChatPromptTemplate.from_messages([
-#         ("system",
-#          "你是一位信息相关性评估专家。请根据用户问题，判断下面提供的一组文档是否包含足够的相关信息来回答该问题。只需回答‘True’或‘False’。\n{format_instructions}"),
-#         ("human", "用户问题: {query}\n\n检索到的文档:\n{documents}")
-#     ]).partial(format_instructions=parser.get_format_instructions())
-#     return prompt | llm | parser
-
 def get_document_relevance_grader_chain():
     """获取文档相关性评估链"""
     parser = JsonOutputParser(pydantic_object=DocumentRelevanceGrade)
@@ -106,6 +95,7 @@ def get_document_relevance_grader_chain():
         ("human", "用户问题: {query}\n\n检索到的文档:\n{documents}")
     ]).partial(format_instructions=parser.get_format_instructions())
     return prompt | llm | parser
+
 
 def get_query_router_chain():
     """获取查询路由链（已升级为智能路由）"""

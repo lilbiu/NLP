@@ -5,6 +5,7 @@
 
 from langchain_core.prompts import ChatPromptTemplate
 
+from agentic_rag import memory
 from agentic_rag.chains import (
     get_query_router_chain, get_initial_rewriter_chain, get_correctional_rewriter_chain,
     get_relevance_grader_chain, get_document_relevance_grader_chain, get_memory_consolidation_chain, llm
@@ -12,7 +13,6 @@ from agentic_rag.chains import (
 from agentic_rag.hierarchical_retriever import hierarchical_retriever, direct_chunk_retriever
 from agentic_rag.retrievers import get_web_search_tool
 from agentic_rag.state import AgentState
-from agentic_rag import memory
 
 
 # --- 新增：记忆相关节点 ---
@@ -109,23 +109,6 @@ def retrieve_documents_node(state: AgentState) -> dict:
     return {"documents": documents}
 
 
-# def grade_documents_node(state: AgentState) -> dict:
-#     """文档相关性评估节点（内循环）"""
-#     print("--- 评估文档相关性 ---")
-#     if not state.get("documents"):
-#         print("--- 未检索到文档，评估为不相关 ---")
-#         return {"documents_are_relevant": False}
-#
-#     grader_chain = get_document_relevance_grader_chain()
-#     result = grader_chain.invoke({"query": state["query"], "documents": state["documents"]})
-#
-#     if result['is_relevant']:
-#         print("---" " 文档相关，准备生成答案 ---")
-#         return {"documents_are_relevant": True}
-#     else:
-#         print("--- 文档不相关，将触发重试 ---")
-#         return {"documents_are_relevant": False}
-
 def grade_documents_node(state: AgentState) -> dict:
     """文档相关性评估节点（内循环）"""
     print("--- 评估文档相关性 ---")
@@ -148,6 +131,7 @@ def grade_documents_node(state: AgentState) -> dict:
     else:
         print("--- 文档不相关，将触发重试 ---")
         return {"documents_are_relevant": False}
+
 
 def web_search_node(state: AgentState) -> dict:
     """网络搜索节点 (现在被 retrieve_documents_node 调用，但保留以备直接调用)"""

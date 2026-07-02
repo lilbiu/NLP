@@ -6,6 +6,7 @@
 """
 from typing import List, TypedDict, Optional
 
+
 class AgentState(TypedDict):
     """
     Agentic RAG的状态表示

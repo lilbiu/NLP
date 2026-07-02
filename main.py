@@ -4,8 +4,9 @@
 """
 
 import uuid
-from agentic_rag.graph import build_graph
+
 from agentic_rag import memory
+from agentic_rag.graph import build_graph
 
 # 线程ID，用于LangGraph的持久化，这里我们用一个简单的UUID
 thread_id = str(uuid.uuid4())

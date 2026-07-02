@@ -1,9 +1,10 @@
 # streamlit_app.py
 # streamlit run streamlit_app.py
-import streamlit as st
-import requests
 import os
 from typing import List, Dict
+
+import requests
+import streamlit as st
 
 # 可通过环境变量设置后端 API 地址，例如：
 # export AGENT_API_URL="http://localhost:8000"
@@ -56,6 +57,7 @@ if send and user_input and user_input.strip():
     # 清输入框（Streamlit 需要通过重新渲染或 JS，这里用清空变量）
     st.rerun()
 
+
 # 当页面加载时，如果上次发送了消息并被存储，尝试发送到后端
 # 这里通过检测最新一条是否为 user 且未被 agent 回复来触发请求
 def last_user_without_reply(messages: List[Dict]) -> bool:
@@ -67,6 +69,7 @@ def last_user_without_reply(messages: List[Dict]) -> bool:
     if len(messages) >= 2 and messages[-2]["role"] == "agent":
         return False
     return True
+
 
 if last_user_without_reply(st.session_state.messages):
     latest = st.session_state.messages[-1]["text"]

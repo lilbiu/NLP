@@ -5,18 +5,18 @@
 
 from langgraph.graph import StateGraph, END
 
-from agentic_rag.state import AgentState
 from agentic_rag.nodes import (
     retrieve_memory_node,
     consolidate_memory_node,
     route_query_node,
     rewrite_query_node,
-    retrieve_documents_node,  # new
-    grade_documents_node,  # new
+    retrieve_documents_node,
+    grade_documents_node,
     generate_response_node,
     grade_relevance_node,
     direct_response_node
 )
+from agentic_rag.state import AgentState
 
 
 def build_graph():

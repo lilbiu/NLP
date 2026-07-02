@@ -6,7 +6,6 @@
 尝试连接您指定的自定义模型并获取一个简单的回复。
 """
 
-import os
 from dotenv import load_dotenv
 from langchain_openai import ChatOpenAI
 
@@ -18,6 +17,7 @@ try:
     load_dotenv()
     # 从 config.py 加载配置
     from config import LLM_MODEL_NAME, OPENAI_API_BASE, OPENAI_API_KEY
+
     print("配置加载成功。")
 except ImportError:
     print("\n错误：无法从 config.py 导入配置。请确保该文件存在且无语法错误。")
@@ -42,9 +42,9 @@ try:
     llm = ChatOpenAI(
         model=LLM_MODEL_NAME,
         base_url=OPENAI_API_BASE,
-        api_key=OPENAI_API_KEY or "dummy-key", # 很多本地模型不需要key，但sdk要求非空
+        api_key=OPENAI_API_KEY or "dummy-key",  # 很多本地模型不需要key，但sdk要求非空
         temperature=0.1,
-        request_timeout=15 # 设置15秒超时
+        request_timeout=15  # 设置15秒超时
     )
     print("ChatOpenAI 客户端初始化成功。")
 except Exception as e:
@@ -58,14 +58,14 @@ print("\n--- 正在发送测试请求... ---")
 try:
     prompt = "你好，请用一句话介绍你自己。"
     response = llm.invoke(prompt)
-    
+
     print("\n✅ 测试成功！模型连接正常。")
     print(f"模型回复: {response.content}")
 
 except Exception as e:
     print(f"\n❌ 测试失败！无法从模型获取回复。")
     print(f"异常类型: {type(e).__name__}\n")
-    
+
     # 提供针对性的错误建议
     if "Connection refused" in str(e) or "timed out" in str(e):
         print("建议: 请检查您的API地址是否正确，以及模型服务是否正在运行。")
@@ -75,5 +75,5 @@ except Exception as e:
         print("建议: 找不到模型。请检查您在 config.py 中设置的 LLM_MODEL_NAME 是否正确，以及您的服务端点是否支持该模型。")
     else:
         print("建议: 请检查错误信息详情，确认服务端状态和网络连接。")
-        
+
     print(f"\n详细错误信息:\n{e}")

@@ -8,14 +8,14 @@
 - ChromaDB: 存储记忆的向量嵌入，用于语义检索。
 """
 
-import os
-import sqlite3
 import datetime
 import math
+import os
+import sqlite3
+import sys
+
 import chromadb
 
-# 动态地将根目录加入sys.path，以便能导入项目内的模块
-import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from agentic_rag.chains import get_embedding_function
@@ -25,6 +25,7 @@ DB_PATH = "long_term_memory.sqlite"
 PERSIST_PATH = "chroma_db"
 MEMORY_COLLECTION_NAME = "long_term_memory"
 
+
 # --- 数据库初始化与连接 ---
 
 def get_db_connection():
@@ -32,6 +33,7 @@ def get_db_connection():
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     return conn
+
 
 def initialize_memory_db():
     """初始化记忆库，如果不存在则创建表和集合。"""
@@ -60,6 +62,7 @@ def initialize_memory_db():
     print(f"ChromaDB集合 '{MEMORY_COLLECTION_NAME}' 已确保存在。")
     print("--- 长期记忆库初始化完成 ---")
 
+
 # --- 核心功能：增、删、查、改 ---
 
 def add_memory(text: str, type: str = 'fact', importance: int = 5):
@@ -85,6 +88,7 @@ def add_memory(text: str, type: str = 'fact', importance: int = 5):
     )
     print(f"记忆已存入，ID: {memory_id}")
 
+
 def retrieve_memories(query_text: str, top_k: int = 3) -> list[dict]:
     """根据查询，使用混合加权算法检索最相关的记忆。"""
     print(f"--- 检索与 '{query_text[:20]}...' 相关的长期记忆 ---")
@@ -94,7 +98,7 @@ def retrieve_memories(query_text: str, top_k: int = 3) -> list[dict]:
     # 1. 语义检索 (获取比top_k更多的候选，以便重排)
     results = collection.query(
         query_texts=[query_text],
-        n_results=top_k * 3, 
+        n_results=top_k * 3,
     )
 
     if not results or not results.get('ids') or not results['ids'][0]:
@@ -124,7 +128,7 @@ def retrieve_memories(query_text: str, top_k: int = 3) -> list[dict]:
             # d. 最终加权得分
             # 权重可以根据经验调整
             final_score = semantic_score * (1 + 0.1 * importance_score) * (1 + 0.5 * recency_score)
-            
+
             ranked_memories.append({
                 "id": res['id'],
                 "text": res['text'],
@@ -141,10 +145,12 @@ def retrieve_memories(query_text: str, top_k: int = 3) -> list[dict]:
     if retrieved_ids:
         print(f"检索到的Top-{len(retrieved_ids)} 记忆ID: {retrieved_ids}")
         cursor = conn.cursor()
-        cursor.execute(f"UPDATE memories SET last_accessed_at = ? WHERE id IN ({','.join('?'*len(retrieved_ids))})", (now, *retrieved_ids))
+        cursor.execute(f"UPDATE memories SET last_accessed_at = ? WHERE id IN ({','.join('?' * len(retrieved_ids))})",
+                       (now, *retrieved_ids))
         conn.commit()
 
     return top_memories
+
 
 def delete_memory(memory_id: int):
     """根据ID删除一条记忆。"""
@@ -163,6 +169,7 @@ def delete_memory(memory_id: int):
     collection.delete(ids=[str(memory_id)])
     print("记忆已从数据库中删除。")
 
+
 def view_memories(limit: int = 10):
     """查看最近的N条记忆。"""
     print(f"--- 查看最近的 {limit} 条记忆 ---")
@@ -170,6 +177,7 @@ def view_memories(limit: int = 10):
         cursor = conn.cursor()
         rows = cursor.execute("SELECT * FROM memories ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
         return [dict(row) for row in rows]
+
 
 # --- 首次运行时可以执行初始化 ---
 if __name__ == '__main__':

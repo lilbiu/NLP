@@ -5,23 +5,23 @@
 本脚本使用多进程并行处理文档，并通过批处理方式存入数据库，以提升注入效率。
 """
 
+import multiprocessing
 import os
 import shutil
-import multiprocessing
-from tqdm import tqdm
-import pandas as pd
+
 import chromadb
-from langchain_core.documents import Document
+import pandas as pd
 from langchain_community.document_loaders import (
     PyPDFLoader,
     TextLoader,
     UnstructuredWordDocumentLoader,
     UnstructuredMarkdownLoader,
 )
+from langchain_core.documents import Document
 from langchain_text_splitters import RecursiveCharacterTextSplitter
+from tqdm import tqdm
 
 # 在加载其他模块前，先加载配置，确保环境变量等设置生效
-import config
 from agentic_rag.chains import get_embedding_function, get_summarizer_chain
 from config import EXCEL_METADATA_COLUMNS
 
@@ -30,6 +30,7 @@ DATA_PATH = "data"
 PERSIST_PATH = "chroma_db"
 SUMMARY_COLLECTION_NAME = "doc_summaries"
 CHUNK_COLLECTION_NAME = "doc_chunks"
+
 
 # --- 工作函数：用于并行处理 ---
 def process_document_worker(doc):
@@ -47,7 +48,7 @@ def process_document_worker(doc):
 
     try:
         # 1. 根据数据类型智能生成摘要
-        doc_type = doc.metadata.get('data_type', 'narrative') # 默认为叙事型
+        doc_type = doc.metadata.get('data_type', 'narrative')  # 默认为叙事型
         summary = ""
         if doc_type == 'narrative':
             # 对叙事型文档，调用LLM生成摘要
@@ -68,6 +69,7 @@ def process_document_worker(doc):
     except Exception as e:
         print(f"处理文档 {doc_source} 时出错: {e}")
         return None
+
 
 # --- 主逻辑 ---
 def main():
@@ -100,20 +102,21 @@ def main():
         return
     documents = load_documents_from_directory(DATA_PATH)
     if not documents:
-        print("未能成功加载任何文档。" )
+        print("未能成功加载任何文档。")
         return
-    print(f"\n成功加载 {len(documents)} 份原始文档/数据行。" )
+    print(f"\n成功加载 {len(documents)} 份原始文档/数据行。")
 
     # 2. 并行处理所有文档
     all_summaries, all_summary_metadatas, all_summary_ids = [], [], []
     all_chunks, all_chunk_metadatas, all_chunk_ids = [], [], []
 
     # 创建进程池
-    num_processes = max(1, os.cpu_count() - 1) # 留一个核心给主进程
+    num_processes = max(1, os.cpu_count() - 1)  # 留一个核心给主进程
     print(f"---" + " 使用 " + f"{num_processes}" + " 个进程并行处理文档" + " ---")
     with multiprocessing.Pool(processes=num_processes) as pool:
         # 使用imap_unordered来获取进度条
-        results = list(tqdm(pool.imap_unordered(process_document_worker, documents), total=len(documents), desc="摘要与切分"))
+        results = list(
+            tqdm(pool.imap_unordered(process_document_worker, documents), total=len(documents), desc="摘要与切分"))
 
     # 3. 收集处理结果
     for result in results:
@@ -127,7 +130,7 @@ def main():
             all_chunk_metadatas.extend(chunk_metadatas)
 
     if not all_summary_ids or not all_chunk_ids:
-        print("未能成功处理任何文档，注入中止。" )
+        print("未能成功处理任何文档，注入中止。")
         return
 
     # 4. 批量存入数据库（分批次）
@@ -163,14 +166,16 @@ def main():
         )
 
     print("\n--- 并行化数据注入完成 ---")
-    print(f"知识库已成功构建在 '{PERSIST_PATH}' 中。" )
+    print(f"知识库已成功构建在 '{PERSIST_PATH}' 中。")
+
 
 # --- 辅助函数定义 ---
 def load_documents_from_directory(directory_path):
     """逐个加载目录中的文档。"""
     # ... (此处省略与之前版本相同的完整代码)
     documents = []
-    loader_map = {'.pdf': PyPDFLoader, '.txt': TextLoader, '.md': UnstructuredMarkdownLoader, '.docx': UnstructuredWordDocumentLoader, '.doc': UnstructuredWordDocumentLoader}
+    loader_map = {'.pdf': PyPDFLoader, '.txt': TextLoader, '.md': UnstructuredMarkdownLoader,
+                  '.docx': UnstructuredWordDocumentLoader, '.doc': UnstructuredWordDocumentLoader}
     supported_files = []
     for root, _, files in os.walk(directory_path):
         for file in files:
@@ -204,6 +209,7 @@ def load_documents_from_directory(directory_path):
         except Exception as e:
             print(f"加载文件 {file_path} 失败: {e}")
     return documents
+
 
 if __name__ == "__main__":
     # 在Windows上使用多进程时，必须将主逻辑放在 if __name__ == '__main__': 下

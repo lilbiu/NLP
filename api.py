@@ -1,5 +1,6 @@
 # api.py
 import asyncio
+import logging
 import threading
 import traceback
 import uuid
@@ -13,6 +14,9 @@ from agentic_rag import memory
 from agentic_rag.graph import build_graph
 
 app = FastAPI(title="Agentic RAG API")
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 # 简单 CORS，便于本地开发；部署时请按需收紧 allow_origins
 app.add_middleware(
@@ -63,33 +67,6 @@ async def startup_event():
     _graph = build_graph()
 
 
-# def _sync_invoke_graph(query: str) -> Dict[str, Any]:
-#     """
-#     在工作线程中同步调用图并返回最终状态字典。
-#     这个函数会被 run_in_executor 调用，以避免阻塞事件循环。
-#     """
-#     global _graph, _config
-#     if _graph is None:
-#         raise RuntimeError("Graph 未初始化")
-#     try:
-#         with _graph_lock:
-#             inputs = {"query": query}
-#             graph_config = {"recursion_limit": 10, **_config}
-#             final_state = _graph.invoke(inputs, config=graph_config)
-#             # final_state 可能是 dict 或自定义对象，这里以稳健方式提取 response
-#             if isinstance(final_state, dict):
-#                 response = final_state.get("response")
-#             else:
-#                 response = getattr(final_state, "response", None)
-#             return {"response": response, "raw_state": final_state}
-#     except Exception as e:
-#         tb = traceback.format_exc()
-#         raise RuntimeError(f"Graph invocation failed: {e}\n{tb}")
-
-import logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
 def _sync_invoke_graph(query: str) -> Dict[str, Any]:
     global _graph, _config
     if _graph is None:
@@ -108,6 +85,7 @@ def _sync_invoke_graph(query: str) -> Dict[str, Any]:
         logger.error("Graph invocation failed", exc_info=True)  # 打印完整堆栈
         tb = traceback.format_exc()
         raise RuntimeError(f"Graph invocation failed: {e}\n{tb}")
+
 
 @app.post("/api/chat", response_model=ChatResponse)
 async def chat_endpoint(req: ChatRequest):
