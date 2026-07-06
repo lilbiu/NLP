@@ -157,7 +157,7 @@ with st.sidebar:
 st.markdown("""
 <div class="page-header">
     <h1>🏥 医疗知识智能问答系统</h1>
-    <p>基于 Agentic RAG 检索增强技术 · 提供专业准确的医疗健康知识解答</p>
+    <p>基于 LLM 和 RAG · 提供专业准确的医疗健康知识解答</p>
 </div>
 """, unsafe_allow_html=True)
 
