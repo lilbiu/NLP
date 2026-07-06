@@ -1,5 +1,5 @@
 # streamlit_app.py
-# 启动命令: streamlit run streamlit_app.py
+# 运行命令: streamlit run streamlit_app.py
 import os
 from typing import List, Dict
 
