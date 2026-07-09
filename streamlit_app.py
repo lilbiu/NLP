@@ -5,6 +5,7 @@ from typing import List, Dict
 
 import requests
 import streamlit as st
+from streamlit.components.v1 import html as components_html
 
 # 可通过环境变量设置后端 API 地址
 API_URL = os.getenv("AGENT_API_URL", "http://localhost:8000").rstrip("/")
@@ -147,8 +148,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# ===================== 增加侧边栏展开按钮（当用户收起侧边栏后可通过该按钮重新展开） =====================
-st.markdown("""
+# ===================== 增加侧边栏展开按钮（使用 components_html，以便 JS 在 iframe 中可执行） =====================
+components_html("""
 <style>
 #open-sidebar-btn {
   position: fixed;
@@ -172,11 +173,15 @@ st.markdown("""
 </div>
 <script>
 function toggleStreamlitSidebar(){
-  // 切换 HTML 上的 class 来强制侧边栏显示/隐藏。
-  document.documentElement.classList.toggle('force-open-sidebar');
+  // 切换 HTML 上的 class 来强制侧边栏显示/隐藏
+  const topDoc = window.parent.document;
+  if (!topDoc) return;
+  const htmlEl = topDoc.documentElement;
+  if (!htmlEl) return;
+  htmlEl.classList.toggle('force-open-sidebar');
 }
 </script>
-""", unsafe_allow_html=True)
+""", height=80)
 
 
 # ===================== 状态初始化 =====================
