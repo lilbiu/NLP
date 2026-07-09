@@ -127,7 +127,55 @@ st.markdown("""
         border-top: 1px solid #f0f0f0;
         z-index: 999;
     }
+
+    /* 当我们通过页面按钮强制展开侧边栏时的样式调整 */
+    html.force-open-sidebar [data-testid="stSidebar"]{
+        transform: none !important;
+        width: 240px !important;
+        left: 0 !important;
+        visibility: visible !important;
+    }
+    html.force-open-sidebar [data-testid="stSidebarContent"]{
+        display: block !important;
+        visibility: visible !important;
+    }
+    /* 保证主区域和头部/底部向右错开，以腾出侧边栏空间 */
+    html.force-open-sidebar .page-header,
+    html.force-open-sidebar .input-area {
+        left: 240px !important;
+    }
 </style>
+""", unsafe_allow_html=True)
+
+# ===================== 增加侧边栏展开按钮（当用户收起侧边栏后可通过该按钮重新展开） =====================
+st.markdown("""
+<style>
+#open-sidebar-btn {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 1100;
+}
+#open-sidebar-btn button {
+  background: #1a56a8;
+  color: #fff;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  box-shadow: 0 2px 6px rgba(26,86,168,0.2);
+}
+</style>
+<div id="open-sidebar-btn">
+  <button title="展开/收起侧边栏" onclick="toggleStreamlitSidebar()">☰</button>
+</div>
+<script>
+function toggleStreamlitSidebar(){
+  // 切换 HTML 上的 class 来强制侧边栏显示/隐藏。
+  document.documentElement.classList.toggle('force-open-sidebar');
+}
+</script>
 """, unsafe_allow_html=True)
 
 
